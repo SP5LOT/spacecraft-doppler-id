@@ -57,17 +57,22 @@ Internet access to `ssd.jpl.nasa.gov` (JPL Horizons API).
 ```bash
 python identify_spacecraft.py \
     --tdm  SP5LOT_20260221_140504.tdm \
-    --freq 2260790300 \
-    --station 16.6752,52.3699,0.07 \
-    --candidates -155 -85 -152
+    --station 16.6752,52.3699,0.07
 ```
+
+Centre frequency and recording bandwidth are read automatically from the TDM
+file (`FREQ_OFFSET` header field, sample rate from the `COMMENT` line written
+by [iq-to-tdm](https://github.com/SP5LOT/iq-to-tdm)). The observer location
+is the only parameter that cannot be inferred.
 
 | Argument | Description |
 |----------|-------------|
-| `--tdm` | TDM file to identify (CCSDS KVN, `RECEIVE_FREQ_2`) |
-| `--freq` | SDR centre frequency in Hz |
-| `--station` | Observer coordinates: `lon,lat,alt_km` (WGS84) |
-| `--candidates` | JPL Horizons spacecraft IDs to test (negative integers) |
+| `--tdm` | TDM file to identify (CCSDS KVN, `RECEIVE_FREQ_2`) — **required** |
+| `--station` | Observer coordinates: `lon,lat,alt_km` (WGS84) — **required** |
+| `--freq` | Override SDR centre frequency [Hz] (auto-read from TDM if omitted) |
+| `--bandwidth` | Override recording bandwidth [Hz] (auto-read from TDM if omitted) |
+| `--add-candidates` | Extra JPL Horizons IDs to test on top of the built-in list |
+| `--only-candidates` | Test only these IDs, skip the built-in list |
 | `--plot` | Save a Doppler comparison plot to `spacecraft_identification.png` |
 
 ### Station coordinates
@@ -106,12 +111,10 @@ python iq_to_tdm.py \
     --input gqrx_20260221_140504_2260790300_125000_fc.sigmf-meta \
     --station SP5LOT --output SP5LOT_20260221_140504.tdm
 
-# Step 2 — identify
+# Step 2 — identify (frequency and bandwidth read automatically from TDM)
 python identify_spacecraft.py \
     --tdm SP5LOT_20260221_140504.tdm \
-    --freq 2260790300 \
     --station 16.6752,52.3699,0.07 \
-    --candidates -155 -85 -152 \
     --plot
 ```
 
@@ -119,25 +122,29 @@ Output:
 
 ```
 Loading TDM: SP5LOT_20260221_140504.tdm
-  Total measurements : 4393
-  Active (|offset|>10 Hz) : 2592
-  Active window : 2026-02-21 14:20 – 2026-02-21 15:04 UTC
+  Centre frequency       : 2260.790300 MHz  (from TDM FREQ_OFFSET)
+  Bandwidth filter       : ±62500 Hz  (from TDM COMMENT)
+  Total measurements     : 4393
+  Active (|offset|>10 Hz): 2592
+  Active window          : 2026-02-21 14:20 – 2026-02-21 15:04 UTC
 
-Testing 3 candidate(s):
-  Querying Horizons for ID -155 ... 45 rows  (elev 50.2°–48.5°)
-    DC offset = +32535.9 Hz  |  RMS residual = 120.0 Hz  |  n = 2592
-  Querying Horizons for ID -85  ... 45 rows  (elev 50.2°–48.5°)
-    DC offset = +28471.2 Hz  |  RMS residual = 5071.6 Hz  |  n = 2592
-  Querying Horizons for ID -152 ... 45 rows  (elev 50.2°–48.5°)
-    DC offset = +28455.5 Hz  |  RMS residual = 1837.3 Hz  |  n = 2592
+Testing 16 candidate(s) from built-in list:
+  -155 (KPLO / Danuri) ... 45 rows  elev 48.7°–50.2°
+    DC = +32535.9 Hz  RMS = 120.0 Hz  n = 2592
+  -85 (Chandrayaan-2 orbiter) ... 45 rows  elev 48.7°–50.3°
+    DC = +28471.2 Hz  RMS = 5071.6 Hz  n = 2592
+  -152 (Chandrayaan-3) ... 45 rows  elev 48.7°–50.1°
+    DC = +28455.5 Hz  RMS = 1837.3 Hz  n = 2592
+  -12 (LADEE) ... no ephemeris
+  ...
 
 ============================================================
-  BEST MATCH: ID -155
-  Elevation range : 50.2° – 48.5°
-  DC offset (transmit freq – SDR centre) : +32535.9 Hz
+  BEST MATCH: -155  KPLO / Danuri (Korea, 2022–)
+  Elevation range              : 48.7° – 50.2°
+  DC offset (TX freq – SDR)    : +32535.9 Hz
   Estimated transmit frequency : 2260.822835 MHz
-  RMS residual after DC removal : 120.0 Hz
-  Matched pairs : 2592
+  RMS residual after DC removal: 120.0 Hz
+  Matched pairs                : 2592
 ============================================================
 ```
 
