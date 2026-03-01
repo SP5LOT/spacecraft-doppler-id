@@ -162,7 +162,8 @@ consistent with the identification above.
 
 ## Related
 
-- [iq-to-tdm](https://github.com/SP5LOT/iq-to-tdm) — convert SDR IQ recordings to CCSDS TDM
+- [iq-to-tdm](https://github.com/SP5LOT/iq-to-tdm) — convert SDR IQ recordings to CCSDS TDM.
+  Produces the TDM files used as input to this tool.
 
 ## License
 
