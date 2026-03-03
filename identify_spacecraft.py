@@ -12,11 +12,11 @@ The only input required from the user is the observer location.
 Usage:
   python identify_spacecraft.py \\
       --tdm unknown.tdm \\
-      --station 16.6752,52.3699,0.07
+      --location 16.6752,52.3699,0.07
 
   python identify_spacecraft.py \\
       --tdm unknown.tdm \\
-      --station 16.6752,52.3699,0.07 \\
+      --location 16.6752,52.3699,0.07 \\
       --plot
 """
 
@@ -40,25 +40,26 @@ C_KMS = 299_792.458   # km/s
 # ---------------------------------------------------------------------------
 
 DEFAULT_SPACECRAFT = {
-    # Lunar orbiters
-    '-155': 'KPLO / Danuri (Korea, 2022–)',
-    '-85':  'Chandrayaan-2 orbiter (India, 2019–)',
-    '-152': 'Chandrayaan-3 propulsion module (India, 2023–)',
-    '-12':  'LADEE (NASA, deorbited 2014)',
-    '-167': 'LADEE (alt ID)',
-    '-177': 'GRAIL-A / Ebb (NASA, 2012)',
-    '-181': 'GRAIL-B / Flow (NASA, 2012)',
-    '-191': 'LCROSS (NASA, 2009)',
-    '-198': 'CAPSTONE (NASA, 2022–)',
-    # Mars / deep space (S-band)
-    '-74':  'MRO — Mars Reconnaissance Orbiter (NASA, 2006–)',
-    '-116': 'Mars Odyssey (NASA, 2001–)',
-    '-130': 'MAVEN (NASA, 2014–)',
-    '-98':  'New Horizons (NASA, 2006–)',
-    # Other
-    '-18':  'WIND (NASA, 1994–)',
-    '-55':  'Ulysses (ESA/NASA, ended 2009)',
-    '-68':  'Dawn (NASA, ended 2018)',
+    # Artemis
+    '-1023': 'Artemis I / Orion (NASA, Nov–Dec 2022)',
+    # Lunar orbiters / landers
+    '-85':   'LRO — Lunar Reconnaissance Orbiter (NASA, 2009–)',
+    '-155':  'KPLO / Danuri (Korea, 2022–)',
+    '-1176': 'CAPSTONE (NASA, 2022–)',
+    '-12':   'LADEE (NASA, deorbited 2014)',
+    '-177':  'GRAIL-A / Ebb (NASA, impacted 2012)',
+    '-181':  'GRAIL-B / Flow (NASA, impacted 2012)',
+    '-18':   'LCROSS Shepherd (NASA, impacted 2009)',
+    '-240':  'SLIM (JAXA, 2024)',
+    # Sun-Earth L1
+    '-8':    'WIND (NASA, 1994–)',
+    '-92':   'ACE (NASA, 1997–)',
+    '-21':   'SOHO (ESA/NASA, 1995–)',
+    '-78':   'DSCOVR (NASA, 2015–)',
+    '-234':  'STEREO-A (NASA, 2006–)',
+    '-235':  'STEREO-B (NASA, 2006–, lost contact 2016)',
+    # Sun-Earth L2
+    '-170':  'JWST — James Webb Space Telescope (NASA, 2021–)',
 }
 
 
@@ -232,8 +233,8 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--tdm',     required=True,
                     help='TDM file to identify')
-    ap.add_argument('--station', required=True,
-                    help='Observer location: lon,lat,alt_km  (WGS84)')
+    ap.add_argument('--location', required=True,
+                    help='Observer location: lon,lat,alt_km  (e.g. 16.6752,52.3699,0.07 for Warsaw)')
     ap.add_argument('--plot',    action='store_true',
                     help='Save Doppler comparison plot to spacecraft_identification.png')
     args = ap.parse_args()
@@ -263,7 +264,7 @@ def main():
     results = []
     for cid, name in DEFAULT_SPACECRAFT.items():
         r = match_candidate(cid, name, active, freq_offset, sample_rate,
-                            args.station, t_start_str, t_stop_str)
+                            args.location, t_start_str, t_stop_str)
         if r:
             results.append(r)
 
@@ -274,8 +275,18 @@ def main():
     results.sort(key=lambda x: x['rms'])
     best = results[0]
 
+    RMS_GOOD = 200      # Hz — confident match
+    RMS_UNCERTAIN = 500  # Hz — possible match
+
     print(f"\n{'='*60}")
-    print(f"  BEST MATCH: {best['id']}  {best['name']}")
+    if best['rms'] > RMS_UNCERTAIN:
+        print(f"  NO MATCH — best candidate RMS = {best['rms']:.0f} Hz (threshold: <{RMS_UNCERTAIN} Hz)")
+        print(f"  The spacecraft is probably not in the built-in list.")
+        print(f"  Closest candidate: {best['id']}  {best['name']}")
+    elif best['rms'] > RMS_GOOD:
+        print(f"  UNCERTAIN MATCH: {best['id']}  {best['name']}")
+    else:
+        print(f"  BEST MATCH: {best['id']}  {best['name']}")
     print(f"  Elevation              : "
           f"{best['elev_range'][0]:.1f}° – {best['elev_range'][1]:.1f}°")
     print(f"  DC offset (TX – SDR)   : {best['dc_offset']:+.1f} Hz")
